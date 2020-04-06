@@ -1,4 +1,4 @@
-# AMAZON-AWS-EC2-WORKER_MANAGER
+# AMAZON-AWS-EC2-S3-SQS-WORKER MANAGER
 
 In this assignment you will code a real-world application to distributively process a list of PDF files, perform some operations on them, and display the result on a web page. 
 
