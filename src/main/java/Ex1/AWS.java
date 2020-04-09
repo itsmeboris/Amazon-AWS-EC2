@@ -45,7 +45,7 @@ public class AWS {
         String script = null;
         try {
             script = getScript(userData);
-            System.out.println("Script: " + script);
+            System.out.println("Script: " + Arrays.toString(Base64.getDecoder().decode(script)));
         } catch (IOException e){
             e.printStackTrace();
             System.exit(1);

@@ -5,19 +5,33 @@ import software.amazon.awssdk.services.sqs.model.Message;
 public class AWSMessage {
 
     private String localApplicationID;
-    private String terminate;
+    private boolean terminate;
     private int n;
     private String input;
     private String output;
+    private String messageDelimiter;
+    private String message;
 
 
     public AWSMessage(Message message, String delimiter) {
         String[] parse = message.body().split(delimiter);
-        this.localApplicationID = parse[0];
-        this.terminate = parse[1];
-        this.n = Integer.parseInt(parse[2]);
-        this.input = parse[3];
-        this.output = parse[4];
+        if(parse.length == 5) {
+            this.localApplicationID = parse[0];
+            this.terminate = Boolean.getBoolean(parse[1]);
+            this.n = Integer.parseInt(parse[2]);
+            this.input = parse[3];
+            this.output = parse[4];
+        }
+        else if(parse.length == 3){
+            this.localApplicationID = parse[0];
+            this.message = parse[1];
+        }
+        this.messageDelimiter = delimiter;
+    }
+
+    public AWSMessage(String localApplicationID, String messageDelimiter) {
+        this.localApplicationID = localApplicationID;
+        this.messageDelimiter = messageDelimiter;
     }
 
 
@@ -25,7 +39,7 @@ public class AWSMessage {
         return localApplicationID;
     }
 
-    public String getTerminate() {
+    public boolean getTerminate() {
         return terminate;
     }
 
@@ -40,4 +54,13 @@ public class AWSMessage {
     public String getOutput() {
         return output;
     }
+
+    public String buildMessage(String message){
+        return localApplicationID + messageDelimiter + message;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
 }

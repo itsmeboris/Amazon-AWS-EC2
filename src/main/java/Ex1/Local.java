@@ -13,7 +13,6 @@ import static Ex1.awsVars.*;
 
 public class Local {
 
-    final static String InstanceID = "ami-076515f20540e6e0b";
     final static String localApplicationID = LOCAL_APPLICATION_ID;
 
     final static Tag MANAGER_TAG = Tag.builder()
@@ -36,22 +35,27 @@ public class Local {
             terminate = true;
         }
         AWS aws = new AWS();
-        if(args.length == 5 && args[4].equals("b")) {
+        if(args.length > 4 && args[4].equals("b")) {
             deleteAllBuckets(aws);
+            System.out.println("deleted all buckets");
         }
         uploadFileToS3(aws, INPUT_BUCKET_NAME + localApplicationID, input, input);
-        //upload the jar
+        System.out.println("input file uploaded");
+//        upload the jar
         uploadFileToS3(aws, APPLICATION_CODE_BUCKET_NAME,
                 EX1_JAR, EX1_JAR);
-        //upload worker script
+        System.out.println("JAR uploaded");
+//        upload worker script
         uploadFileToS3(aws, APPLICATION_CODE_BUCKET_NAME,
                 WORKER_SCRIPT, WORKER_SCRIPT);
+        System.out.println("Worker Script Uploaded");
         //upload manager script
         uploadFileToS3(aws, APPLICATION_CODE_BUCKET_NAME,
                 MANAGER_SCRIPT, MANAGER_SCRIPT);
-        System.out.println("uploaded input file");
+        System.out.println("Manager Script uploaded");
         String managerID;
         try {
+            System.out.println("checking if manager is running");
             managerID = checkIfManagerRunning(aws);
             if(managerID == null){
                 managerID = initiateManager(aws);
@@ -99,7 +103,7 @@ public class Local {
     }
 
     private static void retrieveFromSQS(AWS aws, String stringKey) {
-        String outputQueueURL = aws.SQSinitializeQueue(APP_OUTPUT_QUEUE_NAME + localApplicationID, "0");
+        String outputQueueURL = aws.SQSinitializeQueue(APP_OUTPUT_QUEUE_NAME, "0");
         boolean found = false;
         System.out.println("waiting to receive output");
         while(!found){
@@ -121,7 +125,7 @@ public class Local {
     }
 
     private static void sendToSQS(AWS aws, int n, boolean terminate, String input, String output) throws QueueDoesNotExistException {
-        String inputQueueURL = aws.SQSinitializeQueue(APP_INPUT_QUEUE_NAME + localApplicationID, "0");
+        String inputQueueURL = aws.SQSinitializeQueue(APP_INPUT_QUEUE_NAME, "0");
         String message = localApplicationID + SQS_MSG_DELIMETER + terminate
                             + SQS_MSG_DELIMETER + n + SQS_MSG_DELIMETER + input + SQS_MSG_DELIMETER + output;
         aws.SQSSendMessage(inputQueueURL, message);
@@ -133,7 +137,7 @@ public class Local {
     }
 
     private static String initiateManager(AWS aws){
-        return aws.EC2initiateInstance(InstanceID, 1, 1,
+        return aws.EC2initiateInstance(INSTANCE_ID, 1, 1,
                                INSTANCE_TYPE, MANAGER_SCRIPT, MANAGER_TAG).get(0);
     }
 
