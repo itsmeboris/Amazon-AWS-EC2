@@ -16,11 +16,20 @@ See deployment for notes on how to deploy the project on a live system.
 
 * Java 1.8 and higher  
 * Maven
+* AMAZON AWS IAM Role that has:
+  * AdministratorAccess
+  * AmazonEC2FullAccess
+  * AmazonSQSFullAccess
+  * AmazonS3FullAccess
+* AMAZON aws Security group that has inbound and outbound network enabled
+* Key pair to give your running manager to pass to new instances (this is why AdministratorAccess is required)
+
 
 ## Deployment
 
-* To Run local application simply download or build the jar and then run it using  
-> java -jar *jarname*.jar input-file output-file number-of-workers <terminate>  
+* To Run local application simply download the Ex1.jar and then run it using  
+> java -jar *jarname*.jar input-file output-file number-of-workers terminate b  
+trminate and b are optional terminate will tell the manager to terminate once finished and b <b> will delete all buckets before running.
 * To run Manager application run:
 > java -cp Ex1.jar Ex1.Manager
 * To run Worker application run:
