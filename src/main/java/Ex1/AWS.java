@@ -15,7 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-import static Ex1.awsVars.APPLICATION_CODE_BUCKET_NAME;
+import static Ex1.awsVars.*;
 
 
 public class AWS {
@@ -54,12 +54,12 @@ public class AWS {
                 .imageId(instanceImageID)
                 .instanceType(instanceType)
                 .iamInstanceProfile(IamInstanceProfileSpecification.builder()
-                        .name("Application")
+                        .name(IAM_PROFILE_NAME)
                         .build())
                 .maxCount(max)
                 .minCount(min)
-                .keyName("Boris")
-                .securityGroups("Boris")
+                .keyName(KEY_PAIR_NAME)
+                .securityGroups(SECURITY_GROUP)
                 .userData(script)
                 .build();
         RunInstancesResponse response = ec2.runInstances(runRequest);

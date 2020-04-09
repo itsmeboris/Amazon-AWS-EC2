@@ -20,6 +20,7 @@ public class awsVars {
     static final String OUTPUT_BUCKET_NAME = "output-bucket";
     static final String APPLICATION_CODE_BUCKET_NAME = "apllication-code-bucket-dsp202";
     static final String INSTANCE_TYPE =  InstanceType.T2_NANO.toString();
-
-    static final String INSTANCE_KEY_NAME = "instance_dsp";
+    static final String IAM_PROFILE_NAME = "Application";
+    static final String KEY_PAIR_NAME = "Boris";
+    static final String SECURITY_GROUP = "Boris";
 }
