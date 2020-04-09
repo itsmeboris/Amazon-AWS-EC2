@@ -22,7 +22,9 @@ See deployment for notes on how to deploy the project on a live system.
   * AmazonSQSFullAccess
   * AmazonS3FullAccess
 * AMAZON aws Security group that has inbound and outbound network enabled
-* Key pair to give your running manager to pass to new instances (this is why AdministratorAccess is required)
+* Key pair to give your running manager to pass to new instances (this is why AdministratorAccess is required)  
+  
+<b>please create those profile and change their names inside awsVars.java
 
 
 ## Deployment
