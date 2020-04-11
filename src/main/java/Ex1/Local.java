@@ -97,8 +97,7 @@ public class Local {
     }
 
     private static void downloadOutput(AWS aws, String output) throws IOException {
-        File file = new File(output);
-        file.createNewFile();
+        File file = new File(output + ".html");
         aws.S3DownloadFiles(OUTPUT_BUCKET_NAME + localApplicationID, localApplicationID, file);
     }
 

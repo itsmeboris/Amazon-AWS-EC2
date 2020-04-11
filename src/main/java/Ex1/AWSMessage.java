@@ -17,7 +17,7 @@ public class AWSMessage {
         String[] parse = message.body().split(delimiter);
         if(parse.length == 5) {
             this.localApplicationID = parse[0];
-            this.terminate = Boolean.getBoolean(parse[1]);
+            this.terminate = Boolean.valueOf(parse[1]);
             this.n = Integer.parseInt(parse[2]);
             this.input = parse[3];
             this.output = parse[4];
@@ -25,6 +25,10 @@ public class AWSMessage {
         else if(parse.length == 3){
             this.localApplicationID = parse[0];
             this.message = parse[1];
+        }
+        else if(parse.length == 2) {
+        	this.localApplicationID = parse[0];
+        	this.message = parse[1];
         }
         this.messageDelimiter = delimiter;
     }

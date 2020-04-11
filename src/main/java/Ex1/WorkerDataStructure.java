@@ -3,6 +3,8 @@ package Ex1;
 import java.util.ArrayList;
 import java.util.List;
 
+import Ex1.Worker.Operation;
+
 public class WorkerDataStructure {
     String localApplicationID;
     int maxSize;

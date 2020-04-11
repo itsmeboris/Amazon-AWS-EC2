@@ -148,12 +148,15 @@ public class AWS {
                 .attributes(attributes)
                 .build();
         sqs.createQueue(request);
-        GetQueueUrlRequest getQueueRequest = GetQueueUrlRequest.builder()
+        return getQueueURL(queueName);
+    }
+    
+    public String getQueueURL(String queueName) {
+    	GetQueueUrlRequest getQueueRequest = GetQueueUrlRequest.builder()
                 .queueName(queueName)
                 .build();
         return sqs.getQueueUrl(getQueueRequest).queueUrl();
     }
-
 
 
     public HashMap<String,String> SQSinitializeQueue(ArrayList<Map.Entry<String,String>> queues) throws QueueDoesNotExistException {
