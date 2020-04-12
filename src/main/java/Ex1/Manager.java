@@ -6,8 +6,12 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.*;
+
+import org.apache.commons.io.FileUtils;
 
 import static Ex1.awsVars.*;
 
@@ -43,7 +47,6 @@ public class Manager {
                     System.out.println("MANAGER is exiting");
                     break;
                 }
-
                 try {
                     Thread.sleep(10);
                 } catch (InterruptedException e){
@@ -56,7 +59,6 @@ public class Manager {
             e.printStackTrace();
             System.exit(1);
         }
-
     }
 
     private static void deleteWorkers(AWS aws) {
@@ -85,12 +87,13 @@ public class Manager {
             }
             if(localWorkerIsFull) {
                 System.out.println("local worker is full");
-                File file = new File(awsMessage.getLocalApplicationID());
-                file.createNewFile();
+                File file = createSummaryFile(local, aws);
+                //upload summary file to S3
                 aws.S3UploadFile(OUTPUT_BUCKET_NAME + awsMessage.getLocalApplicationID(), awsMessage.getLocalApplicationID(), file);
                 System.out.println("uploaded output file");
                 aws.SQSSendMessage(awsQueues.get(APP_OUTPUT_QUEUE_NAME), TERMINATED_STRING);
                 localWorkerIsFull = false;
+                localWorkers.remove(awsMessage.getLocalApplicationID()); 
             }
 
             System.out.println("deleting handled message from SQS");
@@ -113,6 +116,7 @@ public class Manager {
             }
         }
         Message message = messages.get(0);
+        System.out.println(message.body());
         AWSMessage awsMessage = new AWSMessage(message, SQS_MSG_DELIMETER);
         File file = downloadFile(aws, awsMessage);
         List<String> inputs = parseInput(file);
@@ -137,8 +141,9 @@ public class Manager {
     private static void sendWork(AWS aws, List<String> inputs, String localApplicationID) {
         String queueURL = awsQueues.get(MNG_INPUT_QUEUE_NAME);
         AWSMessage message = new AWSMessage(localApplicationID, SQS_MSG_DELIMETER);
-        for(String input: inputs)
+        for(String input: inputs) {
             aws.SQSSendMessage(queueURL, message.buildMessage(input));
+        }
     }
 
     private static List<String> parseInput(File file) {
@@ -159,7 +164,7 @@ public class Manager {
 
     private static void initiateWorkers(AWS aws, int inputPerWorker, int size) {
         int numberOfWorkersNeeded = (size + inputPerWorker - 1) / inputPerWorker;
-        int spare = 20 - numOfWorkers;
+        int spare = 3 - numOfWorkers;
         int newWorkers = Math.min(numberOfWorkersNeeded, spare); //max in EC2 is 20
         File file = new File(WORKER_SCRIPT);
         aws.S3DownloadFiles(APPLICATION_CODE_BUCKET_NAME, WORKER_SCRIPT, file);
@@ -187,4 +192,26 @@ public class Manager {
         queues.add(new AbstractMap.SimpleEntry<>(MNG_INPUT_QUEUE_NAME, "30"));
         awsQueues = aws.SQSinitializeQueue(queues);
     }
+    
+    private static File createSummaryFile(WorkerDataStructure local, AWS aws) {
+    	File htmlTemplateFile =new File("template.html");
+        aws.S3DownloadFiles(APPLICATION_CODE_BUCKET_NAME, "template.html", htmlTemplateFile);
+    	File newHtmlFile = new File("Summary.html");
+		try {
+			String htmlString = FileUtils.readFileToString(htmlTemplateFile,Charset.forName("UTF-8") );
+			String title = "summary";
+			String body = "";
+        	for(String processedMsg: local.getProcessed()) 
+        		body += processedMsg + "<br>";
+			htmlString = htmlString.replace("$title", title);
+			htmlString = htmlString.replace("$body", body);
+			FileUtils.writeStringToFile(newHtmlFile, htmlString,Charset.forName("UTF-8"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+        System.out.println("Successfully wrote to summary file");
+        return newHtmlFile;
+        	
+    }
 }
+
