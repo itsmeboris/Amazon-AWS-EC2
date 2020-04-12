@@ -8,7 +8,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.*;
+
+import org.apache.commons.io.FileUtils;
 
 import static Ex1.awsVars.*;
 
@@ -84,10 +87,8 @@ public class Manager {
             }
             if(localWorkerIsFull) {
                 System.out.println("local worker is full");
-                File file = new File(awsMessage.getLocalApplicationID());
-                file.createNewFile();
+                File file = createSummaryFile(local, aws);
                 //upload summary file to S3
-                createSummaryFile(file,local);
                 aws.S3UploadFile(OUTPUT_BUCKET_NAME + awsMessage.getLocalApplicationID(), awsMessage.getLocalApplicationID(), file);
                 System.out.println("uploaded output file");
                 aws.SQSSendMessage(awsQueues.get(APP_OUTPUT_QUEUE_NAME), TERMINATED_STRING);
@@ -141,9 +142,7 @@ public class Manager {
         String queueURL = awsQueues.get(MNG_INPUT_QUEUE_NAME);
         AWSMessage message = new AWSMessage(localApplicationID, SQS_MSG_DELIMETER);
         for(String input: inputs) {
-        	String toSend = message.buildMessage(input);
-        	System.out.println(toSend);
-            aws.SQSSendMessage(queueURL, toSend);
+            aws.SQSSendMessage(queueURL, message.buildMessage(input));
         }
     }
 
@@ -194,16 +193,25 @@ public class Manager {
         awsQueues = aws.SQSinitializeQueue(queues);
     }
     
-    private static void createSummaryFile(File file, WorkerDataStructure local) {
-        try {
-        	FileWriter myWriter = new FileWriter(file);
+    private static File createSummaryFile(WorkerDataStructure local, AWS aws) {
+    	File htmlTemplateFile =new File("template.html");
+        aws.S3DownloadFiles(APPLICATION_CODE_BUCKET_NAME, "template.html", htmlTemplateFile);
+    	File newHtmlFile = new File("Summary.html");
+		try {
+			String htmlString = FileUtils.readFileToString(htmlTemplateFile,Charset.forName("UTF-8") );
+			String title = "summary";
+			String body = "";
         	for(String processedMsg: local.getProcessed()) 
-        		myWriter.write(processedMsg + "\n");
-			myWriter.close();
+        		body += processedMsg + "<br>";
+			htmlString = htmlString.replace("$title", title);
+			htmlString = htmlString.replace("$body", body);
+			FileUtils.writeStringToFile(newHtmlFile, htmlString,Charset.forName("UTF-8"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
         System.out.println("Successfully wrote to summary file");
+        return newHtmlFile;
+        	
     }
 }
 

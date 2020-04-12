@@ -53,6 +53,11 @@ public class Local {
         uploadFileToS3(aws, APPLICATION_CODE_BUCKET_NAME,
                 MANAGER_SCRIPT, MANAGER_SCRIPT);
         System.out.println("Manager Script uploaded");
+        //upload template html
+        uploadFileToS3(aws, APPLICATION_CODE_BUCKET_NAME,
+        		"template.html","template.html");
+        System.out.println("HTML template uploaded");
+        
         String managerID;
         try {
             System.out.println("checking if manager is running");

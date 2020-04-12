@@ -9,10 +9,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.List;
 
 import javax.imageio.ImageIO;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -54,7 +56,7 @@ public class Worker {
         }
         @Override
         public String toString(){
-            return "<" + this.operation + ">: " + this.input + " " + this.output;
+            return this.operation + " " + this.input + " " + this.output;
         }
     }
     
@@ -75,7 +77,7 @@ public class Worker {
         }
         catch (IOException e){
             System.out.println("Something went wrong, check output.html when finished for more info");
-            op.setOutput("<" + e.toString() + ">");
+            op.setOutput(e.toString());
         }
     }
     
@@ -98,11 +100,6 @@ public class Worker {
                 ImageIO.write(image, "png", file);
                 break;
             case "ToHTML":
-//	        	outputFile = new File(System.getProperty("user.dir") + "/output.html");
-//	        	writer = new PrintWriter(outputFile, "utf-8");
-//	            new PDFDomTree().writeText(doc, writer);
-//	            writer.close();
-//	            break;
                 PDFTextStripper pdfStripper = new PDFTextStripper();
                 String text = pdfStripper.getText(document);
                 name = op.getFileName().split("\\.")[0] + ".html";
@@ -111,7 +108,6 @@ public class Worker {
                 FileWriter myWriter = new FileWriter(file);
                 myWriter.write(text);
                 myWriter.close();
-                break;
             case "ToText":
                 pdfStripper = new PDFTextStripper();
                 text = pdfStripper.getText(document);
@@ -126,19 +122,6 @@ public class Worker {
                 throw new IOException("Operation is Not one of the defaults");
         }
         return file;
-    }
-    
-    public static void makeHTML(Operation Op, String output){
-        try {
-            File file = new File(output + ".html");
-            file.createNewFile();
-            FileWriter myWriter = new FileWriter(file);
-            myWriter.write(Op.toString() + "\n");
-            myWriter.close();
-        }
-        catch (IOException e){
-            e.printStackTrace();
-        }
     }
     
     private static void sendToSQS(AWS aws, String message) throws QueueDoesNotExistException {
@@ -161,7 +144,6 @@ public class Worker {
 				file.mkdir();
 				work(op); 
 				sendToSQS(aws,op.toString());
-				//    makeHTML(op,"output");
 				String receiptHandle = msg.receiptHandle();
 				aws.SQSDeleteMessage(queueURL, receiptHandle);
 				System.out.println("deleted Message");
