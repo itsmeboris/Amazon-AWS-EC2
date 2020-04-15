@@ -6,7 +6,6 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 import static Ex1.awsVars.*;
@@ -20,6 +19,7 @@ public class Local {
             .value("manager")
             .build();
 
+    // to run with JAR: java -jar Ex1.jar input-sample-2.txt output.html 20 terminate b
     public static void main(String[] args) {
         final String USAGE =
                 "To run this,supply an input file output file and number of files per worker\n";
@@ -42,8 +42,8 @@ public class Local {
         uploadFileToS3(aws, INPUT_BUCKET_NAME + localApplicationID, input, input);
         System.out.println("input file uploaded");
 //        upload the jar
-        uploadFileToS3(aws, APPLICATION_CODE_BUCKET_NAME,
-                EX1_JAR, EX1_JAR);
+//        uploadFileToS3(aws, APPLICATION_CODE_BUCKET_NAME,
+//                EX1_JAR, EX1_JAR);
         System.out.println("JAR uploaded");
 //        upload worker script
         uploadFileToS3(aws, APPLICATION_CODE_BUCKET_NAME,
@@ -55,7 +55,7 @@ public class Local {
         System.out.println("Manager Script uploaded");
         //upload template html
         uploadFileToS3(aws, APPLICATION_CODE_BUCKET_NAME,
-        		"template.html","template.html");
+                HTML_TEMPLATE,HTML_TEMPLATE);
         System.out.println("HTML template uploaded");
         
         String managerID;
@@ -73,7 +73,7 @@ public class Local {
             sendToSQS(aws, n, terminate, input, output);
             System.out.println("message was sent to queue");
             
-            retrieveFromSQS(aws, TERMINATED_STRING);
+            retrieveFromSQS(aws, TERMINATED_STRING+localApplicationID);
             System.out.println("Output in S3");
 
             downloadOutput(aws, output);
@@ -85,9 +85,6 @@ public class Local {
 
         } catch (Ec2Exception e) {
             System.err.println( e.getLocalizedMessage());
-            System.exit(1);
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
             System.exit(1);
         }
     }
@@ -101,8 +98,8 @@ public class Local {
         aws.EC2TerminateInstance(managerID);
     }
 
-    private static void downloadOutput(AWS aws, String output) throws IOException {
-        File file = new File(output + ".html");
+    private static void downloadOutput(AWS aws, String output) {
+        File file = new File(output);
         aws.S3DownloadFiles(OUTPUT_BUCKET_NAME + localApplicationID, localApplicationID, file);
     }
 
@@ -135,9 +132,9 @@ public class Local {
         aws.SQSSendMessage(inputQueueURL, message);
     }
 
-    private static String uploadFileToS3(AWS aws,String Bucket, String key, String input) {
+    private static void uploadFileToS3(AWS aws,String Bucket, String key, String input) {
         File file = new File(input);
-        return aws.S3UploadFile(Bucket, key, file);
+        aws.S3UploadFile(Bucket, key, file);
     }
 
     private static String initiateManager(AWS aws){

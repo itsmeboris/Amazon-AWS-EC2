@@ -147,7 +147,6 @@ public class Worker {
 				String receiptHandle = msg.receiptHandle();
 				aws.SQSDeleteMessage(queueURL, receiptHandle);
 				System.out.println("deleted Message");
-		        messages = aws.SQSReceiveMessages(queueURL);
 	        }
 	        try {
 				Thread.sleep(2000);

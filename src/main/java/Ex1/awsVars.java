@@ -1,6 +1,7 @@
 package Ex1;
 
 import software.amazon.awssdk.services.ec2.model.InstanceType;
+import software.amazon.awssdk.regions.Region;
 
 import java.util.UUID;
 
@@ -23,4 +24,8 @@ public class awsVars {
     static final String IAM_PROFILE_NAME = "Application";
     static final String KEY_PAIR_NAME = "Boris";
     static final String SECURITY_GROUP = "Boris";
+    static final String HTML_TEMPLATE = "template.html";
+    static final String SUMMARY_FILE = "summary.html";
+    static final Region REGION = Region.US_EAST_1;
+    static final int MAX_INSTANCES = 9;
 }

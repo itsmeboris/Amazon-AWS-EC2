@@ -6,9 +6,8 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import org.apache.commons.io.FileUtils;
@@ -35,10 +34,11 @@ public class Manager {
         try{
             initializeAllQueues(aws);
             //tasks to do
-            downloadInputFile(aws);
             while(true) {
+                if(!terminate)
+                    downloadInputFile(aws);
                 //check if finished all work
-                System.out.println("checking for messages");
+//                System.out.println("checking for messages");
                 checkFinishedTask(aws);
                 if(localWorkers.isEmpty() && terminate) {
                     deleteWorkers(aws);
@@ -53,7 +53,7 @@ public class Manager {
                     e.printStackTrace();
                 }
             }
-            aws.SQSSendMessage(awsQueues.get(APP_OUTPUT_QUEUE_NAME),TERMINATED_STRING);
+            aws.SQSSendMessage(awsQueues.get(APP_OUTPUT_QUEUE_NAME), TERMINATED_STRING);
             System.out.println("MANAGER FINISHED");
         } catch (Exception e){
             e.printStackTrace();
@@ -69,11 +69,9 @@ public class Manager {
         }
     }
     //check if finished all work
-    private static void checkFinishedTask(AWS aws) throws IOException {
+    private static void checkFinishedTask(AWS aws) {
         List<Message> messages = aws.SQSReceiveMessages(awsQueues.get(MNG_OUTPUT_QUEUE_NAME));
-
         boolean localWorkerIsFull = false;
-
         for(Message message: messages){
             AWSMessage awsMessage = new AWSMessage(message, SQS_MSG_DELIMETER);
             WorkerDataStructure local = localWorkers.get(awsMessage.getLocalApplicationID());
@@ -82,20 +80,18 @@ public class Manager {
                 localWorkers.put(awsMessage.getLocalApplicationID(), local);
                 System.out.println("read message from worker and added it to the list");
             }
-            else{
-                System.out.println("no such local worker");
-            }
+            else{ System.out.println("no such local worker"); }
             if(localWorkerIsFull) {
                 System.out.println("local worker is full");
-                File file = createSummaryFile(local, aws);
+                File file = createSummaryFile(local);
                 //upload summary file to S3
                 aws.S3UploadFile(OUTPUT_BUCKET_NAME + awsMessage.getLocalApplicationID(), awsMessage.getLocalApplicationID(), file);
                 System.out.println("uploaded output file");
-                aws.SQSSendMessage(awsQueues.get(APP_OUTPUT_QUEUE_NAME), TERMINATED_STRING);
+                file.delete();
+                aws.SQSSendMessage(awsQueues.get(APP_OUTPUT_QUEUE_NAME), TERMINATED_STRING+awsMessage.getLocalApplicationID());
                 localWorkerIsFull = false;
-                localWorkers.remove(awsMessage.getLocalApplicationID()); 
+                localWorkers.remove(awsMessage.getLocalApplicationID());
             }
-
             System.out.println("deleting handled message from SQS");
             String receiptHandle = message.receiptHandle();
             aws.SQSDeleteMessage(awsQueues.get(MNG_OUTPUT_QUEUE_NAME), receiptHandle);
@@ -107,14 +103,8 @@ public class Manager {
         // check if there is a new file
         String queueURL = awsQueues.get(APP_INPUT_QUEUE_NAME);
         List<Message> messages = aws.SQSReceiveMessages(queueURL);
-        while(messages.isEmpty()){
-            try {
-                Thread.sleep(10);
-                messages = aws.SQSReceiveMessages(queueURL);
-            } catch (InterruptedException e){
-                e.printStackTrace();
-            }
-        }
+        if(messages.isEmpty()){ return; }
+        System.out.println("got message, parsing...");
         Message message = messages.get(0);
         System.out.println(message.body());
         AWSMessage awsMessage = new AWSMessage(message, SQS_MSG_DELIMETER);
@@ -126,10 +116,10 @@ public class Manager {
         localWorkers.put(
                 awsMessage.getLocalApplicationID(),
                 new WorkerDataStructure(
-                        awsMessage.getLocalApplicationID(),inputs.size()));
+                        awsMessage.getLocalApplicationID(), inputs.size()));
         sendWork(aws, inputs, awsMessage.getLocalApplicationID());
         System.out.println("Sent Messages to Workers");
-        if(awsMessage.getTerminate()) {
+        if (awsMessage.getTerminate()) {
             terminate = true;
             System.out.println("Request to terminate");
         }
@@ -164,13 +154,9 @@ public class Manager {
 
     private static void initiateWorkers(AWS aws, int inputPerWorker, int size) {
         int numberOfWorkersNeeded = (size + inputPerWorker - 1) / inputPerWorker;
-        int spare = 3 - numOfWorkers;
-        int newWorkers = Math.min(numberOfWorkersNeeded, spare); //max in EC2 is 20
-        File file = new File(WORKER_SCRIPT);
-        aws.S3DownloadFiles(APPLICATION_CODE_BUCKET_NAME, WORKER_SCRIPT, file);
-        System.out.println("Downloaded Script");
-        System.out.printf("creating: %d workers\n", newWorkers);
-        workerInstanceIDs = aws.EC2initiateInstance(INSTANCE_ID, newWorkers, newWorkers, INSTANCE_TYPE, WORKER_SCRIPT, WORKER_TAG);
+        int spare = MAX_INSTANCES - numOfWorkers;
+        int newWorkers = Math.min(numberOfWorkersNeeded, spare); //max in EC2 is 10
+        workerInstanceIDs.addAll(aws.EC2initiateInstance(INSTANCE_ID, newWorkers, newWorkers, INSTANCE_TYPE, WORKER_SCRIPT, WORKER_TAG));
         numOfWorkers += newWorkers;
     }
 
@@ -192,26 +178,23 @@ public class Manager {
         queues.add(new AbstractMap.SimpleEntry<>(MNG_INPUT_QUEUE_NAME, "30"));
         awsQueues = aws.SQSinitializeQueue(queues);
     }
-    
-    private static File createSummaryFile(WorkerDataStructure local, AWS aws) {
-    	File htmlTemplateFile =new File("template.html");
-        aws.S3DownloadFiles(APPLICATION_CODE_BUCKET_NAME, "template.html", htmlTemplateFile);
-    	File newHtmlFile = new File("Summary.html");
-		try {
-			String htmlString = FileUtils.readFileToString(htmlTemplateFile,Charset.forName("UTF-8") );
-			String title = "summary";
-			String body = "";
-        	for(String processedMsg: local.getProcessed()) 
-        		body += processedMsg + "<br>";
-			htmlString = htmlString.replace("$title", title);
-			htmlString = htmlString.replace("$body", body);
-			FileUtils.writeStringToFile(newHtmlFile, htmlString,Charset.forName("UTF-8"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+
+    private static File createSummaryFile(WorkerDataStructure local) {
+        File htmlTemplateFile = new File(HTML_TEMPLATE);
+        File newHtmlFile = new File(SUMMARY_FILE);
+        try {
+            String htmlString = FileUtils.readFileToString(htmlTemplateFile, StandardCharsets.UTF_8);
+            String title = "summary";
+            StringBuilder body = new StringBuilder();
+            for(String processedMsg: local.getProcessed())
+                body.append(processedMsg).append("<br>");
+            htmlString = htmlString.replace("$title", title);
+            htmlString = htmlString.replace("$body", body.toString());
+            FileUtils.writeStringToFile(newHtmlFile, htmlString, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         System.out.println("Successfully wrote to summary file");
         return newHtmlFile;
-        	
     }
 }
-

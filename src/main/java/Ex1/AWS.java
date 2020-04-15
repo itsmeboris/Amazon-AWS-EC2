@@ -22,7 +22,7 @@ public class AWS {
     private Ec2Client ec2;
     private S3Client s3;
     private SqsClient sqs;
-    private Region region = Region.US_EAST_1;
+    private Region region = REGION;
 
     public AWS(){
         initEC2();
@@ -118,7 +118,7 @@ public class AWS {
         return null;
     }
 
-    public String S3UploadFile(String bucketName, String key, File file) {
+    public void S3UploadFile(String bucketName, String key, File file) {
         CreateBucketRequest createBucketRequest = CreateBucketRequest
                 .builder()
                 .bucket(bucketName)
@@ -131,7 +131,6 @@ public class AWS {
                 .key(key)
                 .acl(ObjectCannedACL.PUBLIC_READ)
                 .build(),RequestBody.fromFile(file));
-        return "https://s3.amazonaws.com/"+bucketName+"/"+key;
     }
 
     public void initSQS() {
@@ -198,11 +197,8 @@ public class AWS {
         ReceiveMessageRequest receiveMessageRequest = ReceiveMessageRequest
                 .builder()
                 .queueUrl(queueURL)
+                .maxNumberOfMessages(1)
                 .build();
-        return sqs.receiveMessage(receiveMessageRequest).messages();
-    }
-
-    public List<Message> SQSReceiveMessages(ReceiveMessageRequest receiveMessageRequest) {
         return sqs.receiveMessage(receiveMessageRequest).messages();
     }
 
