@@ -47,3 +47,6 @@ trminate and b are optional terminate will tell the manager to terminate once fi
 ## License
 
 This project is licensed under the Apache License - see the [LICENSE.md](LICENSE.md) file for details
+
+## Additional information
+* [More details about scalability](README.txt)
